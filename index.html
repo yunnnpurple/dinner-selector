@@ -1,0 +1,240 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>今晚吃什麼？</title>
+<style>
+body{font-family:"Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;background:#eaf6ff;color:#5a4638;margin:0;padding:24px}.app{max-width:540px;margin:auto}h1,p{text-align:center}.box{background:#ead9cc;padding:22px;border-radius:20px;margin-top:20px;box-shadow:0 8px 25px rgba(90,70,56,.11);border:1px solid #cdb09d}.field{margin:16px 0}label{font-weight:bold;display:block;margin-bottom:7px}select,button{width:100%;padding:12px;border-radius:12px;font-size:16px}select{border:1px solid #8dbfdd;background:#edf8ff;color:#4b382d}select option{background:#edf8ff;color:#4b382d}button{border:0;font-weight:bold;cursor:pointer}.primary{background:#9ed3f2;color:#4b382d;border:2px solid #79bde4}.actions{display:flex;gap:12px;margin-top:14px}.no{background:#d9edf9;color:#5a4638;border:2px solid #9ccce8}.yes{background:#c9e7f7;color:#5a4638;border:2px solid #8a6a55}.no:hover{background:#bfe0f3}.yes:hover{background:#b8dcf1}.primary:hover{background:#87c8ee}button:active{transform:scale(.98)}.hidden{display:none}.card{text-align:center}.emoji{font-size:64px}.details{line-height:1.8}.count{color:#777;text-align:center;margin-top:10px}
+
+.need-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  margin-top:8px;
+}
+.need-option{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#edf8ff;
+  border:1px solid #9abfd4;
+  border-radius:12px;
+  padding:10px 12px;
+  cursor:pointer;
+  font-weight:500;
+}
+.need-option:hover{background:#d9edf9}
+.need-option input{width:auto;margin:0;accent-color:#8a6a55}
+@media(max-width:560px){.need-grid{grid-template-columns:1fr}}
+
+
+.favorite-btn{
+  position:absolute;right:16px;top:16px;width:auto;
+  background:#fff7f8;color:#8a5d63;border:1px solid #d9b8bd;
+  padding:8px 11px;border-radius:50%;font-size:23px;line-height:1;
+}
+.favorite-btn.active{background:#f5dadd;color:#9a4f59;border-color:#c98d95}
+#card{position:relative}
+</style></head><body><main class="app">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button id="restartTop" onclick="reset()" style="width:auto;background:#d9edf9;color:#5a4638;border:2px solid #9abfd4;padding:10px 16px;font-family:inherit;font-size:16px;font-weight:700;letter-spacing:0;border-radius:13px">重新開始</button>
+    </div>
+    <h1>🍽️ 今晚吃什麼？</h1><p>不用再跟自己辯論晚餐了！</p>
+<section id="setup" class="box">
+<div class="field"><label>⏱ 可以吃飯的時間</label><select id="time"><option value="30">30 分鐘內</option><option value="60">1 小時內</option><option value="999">時間充裕</option></select></div>
+<div class="field"><label>🥗 是否正在飲食控制</label><select id="diet"><option value="no">否</option><option value="yes">是</option></select></div>
+<div class="field"><label>💰 預算</label><select id="budget">
+<option value="under100">100 元以下</option>
+<option value="100to150">100～150 元</option>
+<option value="150to200">150～200 元</option>
+<option value="200to300">200～300 元</option>
+<option value="300to500">300～500 元</option>
+<option value="over500">500 元以上</option>
+<option value="unlimited">不限</option></select></div>
+<div class="field"><label>✨ 其他需求</label>
+<div id="need" class="need-grid">
+  <label class="need-option"><input type="checkbox" value="light"> 想吃清淡一點</label>
+  <label class="need-option"><input type="checkbox" value="full"> 想吃飽一點</label>
+  <label class="need-option"><input type="checkbox" value="hot"> 想吃熱的</label>
+  <label class="need-option"><input type="checkbox" value="nofried"> 不想吃油炸的</label>
+  <label class="need-option"><input type="checkbox" value="notfull"> 不想吃太飽</label>
+  <label class="need-option"><input type="checkbox" value="premium"> 想吃好一點</label>
+  <label class="need-option"><input type="checkbox" value="takeout"> 要可以外帶的</label>
+</div>
+<p style="font-size:13px;margin:7px 0 0;color:#78665a">可以複選；都不勾就是沒有特別需求。</p>
+</div>
+<button class="primary" onclick="start()">開始幫我選晚餐</button></section>
+<section id="match" class="hidden"><div id="card" class="box card"></div><div class="actions"><button class="no" onclick="pick(false)">✕ 不要</button><button class="yes" onclick="pick(true)">♥ 想吃</button></div><div id="count" class="count"></div></section>
+<section id="result" class="box hidden"></section></main>
+<script>
+const foods=[{"name":"健康餐盒","e":"🥗","min":100,"max":180,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"越南河粉","e":"🍜","min":120,"max":200,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"關東煮","e":"🍢","min":80,"max":160,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"日式便當","e":"🍱","min":120,"max":220,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"咖哩飯","e":"🍛","min":130,"max":250,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"義大利麵","e":"🍝","min":160,"max":320,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"小火鍋","e":"🍲","min":180,"max":350,"t":60,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"滷味","e":"🥘","min":80,"max":220,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"水餃","e":"🥟","min":70,"max":160,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"壽司","e":"🍣","min":120,"max":350,"t":40,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"丼飯","e":"🍚","min":130,"max":280,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"牛肉麵","e":"🍜","min":130,"max":260,"t":40,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"榨菜肉絲麵","e":"🍜","min":70,"max":160,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"酸辣粉","e":"🌶️","min":90,"max":180,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"焢肉飯","e":"🍚","min":80,"max":180,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"拉麵","e":"🍜","min":160,"max":320,"t":45,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"乾拌麵","e":"🍜","min":70,"max":170,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炒飯","e":"🍚","min":80,"max":180,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蛋包飯","e":"🍳","min":120,"max":230,"t":35,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞腿便當","e":"🍗","min":100,"max":190,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"潛艇堡","e":"🥖","min":100,"max":220,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"三明治","e":"🥪","min":50,"max":160,"t":15,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"漢堡","e":"🍔","min":80,"max":250,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"披薩","e":"🍕","min":150,"max":350,"t":40,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"墨西哥捲餅","e":"🌯","min":150,"max":300,"t":35,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式拌飯","e":"🍚","min":150,"max":280,"t":40,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"牛排","e":"🥩","min":250,"max":600,"t":60,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"泰式打拋豬飯","e":"🍚","min":120,"max":240,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"麻辣燙","e":"🌶️","min":100,"max":260,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鹽水雞","e":"🍗","min":80,"max":220,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"沙拉","e":"🥗","min":100,"max":250,"t":15,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"粥","e":"🥣","min":60,"max":180,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"涼麵","e":"🍜","min":50,"max":120,"t":15,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"飯糰","e":"🍙","min":35,"max":100,"t":10,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鹹酥雞","e":"🍗","min":80,"max":250,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"燒肉","e":"🥩","min":300,"max":700,"t":75,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海南雞飯","e":"🍗","min":120,"max":240,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞肉飯","e":"🍚","min":50,"max":130,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"火雞肉飯","e":"🍚","min":60,"max":140,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"滷肉飯","e":"🍚","min":40,"max":120,"t":15,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"排骨飯","e":"🍱","min":90,"max":170,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤雞腿飯","e":"🍗","min":110,"max":200,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤鯖魚便當","e":"🐟","min":120,"max":220,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤鮭魚餐","e":"🐟","min":220,"max":450,"t":45,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤魚定食","e":"🐟","min":180,"max":350,"t":45,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["light","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"生魚片丼飯","e":"🍣","min":200,"max":450,"t":45,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烏龍麵","e":"🍜","min":100,"max":220,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蕎麥麵","e":"🍜","min":120,"max":240,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鍋燒意麵","e":"🍜","min":80,"max":170,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鍋燒烏龍麵","e":"🍜","min":100,"max":190,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"餛飩麵","e":"🍜","min":70,"max":150,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"陽春麵","e":"🍜","min":50,"max":110,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"麻醬麵","e":"🍜","min":60,"max":130,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸醬麵","e":"🍜","min":70,"max":150,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"擔仔麵","e":"🍜","min":60,"max":140,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"米粉湯","e":"🍜","min":50,"max":130,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"米苔目","e":"🍜","min":50,"max":130,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鴨肉麵","e":"🍜","min":80,"max":170,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鵝肉飯","e":"🍚","min":100,"max":220,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"肉羹麵","e":"🍜","min":70,"max":150,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蚵仔麵線","e":"🍜","min":60,"max":130,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"大腸麵線","e":"🍜","min":60,"max":140,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蚵仔煎","e":"🍳","min":70,"max":140,"t":20,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蔥油餅加蛋","e":"🥞","min":50,"max":100,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蛋餅","e":"🍳","min":40,"max":90,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蘿蔔糕","e":"🍳","min":40,"max":90,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鍋貼","e":"🥟","min":60,"max":140,"t":20,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"生煎包","e":"🥟","min":60,"max":140,"t":20,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"小籠包","e":"🥟","min":100,"max":220,"t":30,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"牛肉捲餅","e":"🌯","min":100,"max":200,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蔥抓餅","e":"🥞","min":50,"max":110,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"臭豆腐","e":"🍽️","min":60,"max":130,"t":20,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"麻辣臭豆腐","e":"🌶️","min":90,"max":180,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"藥膳排骨","e":"🍲","min":120,"max":250,"t":40,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"羊肉爐","e":"🍲","min":250,"max":500,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"薑母鴨","e":"🍲","min":250,"max":500,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"石頭火鍋","e":"🍲","min":250,"max":500,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"涮涮鍋","e":"🍲","min":220,"max":500,"t":65,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"酸菜白肉鍋","e":"🍲","min":250,"max":500,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式豆腐鍋","e":"🍲","min":180,"max":320,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"部隊鍋","e":"🍲","min":220,"max":380,"t":50,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式冷麵","e":"🍜","min":160,"max":280,"t":35,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式烤肉飯","e":"🍚","min":160,"max":300,"t":35,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"石鍋拌飯","e":"🍚","min":160,"max":280,"t":40,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"泡菜炒飯","e":"🍚","min":100,"max":200,"t":30,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式炸雞","e":"🍗","min":180,"max":350,"t":35,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"泰式河粉","e":"🍜","min":130,"max":250,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"綠咖哩飯","e":"🍛","min":140,"max":260,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海南叻沙","e":"🍜","min":150,"max":280,"t":40,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"肉骨茶","e":"🍲","min":180,"max":350,"t":50,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"新加坡雞飯","e":"🍗","min":130,"max":260,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"印度咖哩","e":"🍛","min":180,"max":350,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤餅配咖哩","e":"🫓","min":180,"max":350,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"土耳其烤肉捲","e":"🌯","min":130,"max":260,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"希臘沙拉","e":"🥗","min":180,"max":320,"t":30,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"夏威夷拌飯 Poke","e":"🥗","min":180,"max":350,"t":25,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"酪梨雞肉碗","e":"🥗","min":180,"max":320,"t":25,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"舒肥雞胸餐","e":"🍗","min":130,"max":260,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"地瓜雞胸餐","e":"🍠","min":100,"max":220,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"豆腐蔬菜餐","e":"🥗","min":100,"max":220,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蔬食便當","e":"🥗","min":100,"max":200,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"素食自助餐","e":"🥗","min":80,"max":180,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"素食麵","e":"🍜","min":70,"max":160,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蔬菜湯","e":"🥣","min":80,"max":180,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"番茄蛋花湯麵","e":"🍜","min":80,"max":160,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞湯麵","e":"🍜","min":100,"max":200,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞湯","e":"🍲","min":120,"max":260,"t":35,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"剝皮辣椒雞湯","e":"🍲","min":150,"max":300,"t":40,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"砂鍋魚頭","e":"🍲","min":250,"max":500,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"清蒸魚套餐","e":"🐟","min":220,"max":450,"t":50,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"港式燒臘飯","e":"🍱","min":110,"max":220,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"叉燒飯","e":"🍚","min":100,"max":200,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海南燒雞飯","e":"🍗","min":120,"max":220,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"廣東粥","e":"🥣","min":90,"max":190,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"腸粉","e":"🍽️","min":80,"max":180,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"港式點心","e":"🥟","min":200,"max":450,"t":60,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"港式飲茶","e":"🫖","min":300,"max":600,"t":75,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鐵板燒","e":"🥩","min":180,"max":500,"t":55,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"日式定食","e":"🍱","min":180,"max":350,"t":45,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"親子丼","e":"🍚","min":130,"max":240,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"牛丼","e":"🍚","min":100,"max":220,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"豬排丼","e":"🍚","min":140,"max":260,"t":35,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"天丼","e":"🍤","min":160,"max":300,"t":40,"d":false,"fried":true,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸豬排定食","e":"🍱","min":180,"max":320,"t":45,"d":false,"fried":true,"premium":true,"takeout":false,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤鰻魚飯","e":"🍱","min":300,"max":650,"t":60,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"茶泡飯","e":"🍚","min":120,"max":240,"t":30,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"日式咖哩烏龍","e":"🍜","min":140,"max":260,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"明太子義大利麵","e":"🍝","min":200,"max":350,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"燉飯","e":"🍚","min":180,"max":350,"t":50,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"焗烤飯","e":"🧀","min":180,"max":320,"t":45,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"焗烤麵","e":"🧀","min":180,"max":320,"t":45,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"青醬義大利麵","e":"🍝","min":170,"max":320,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"番茄義大利麵","e":"🍝","min":150,"max":300,"t":40,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"白醬義大利麵","e":"🍝","min":170,"max":320,"t":45,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞肉凱薩沙拉","e":"🥗","min":150,"max":280,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"法式鹹派","e":"🥧","min":150,"max":280,"t":35,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"早午餐拼盤","e":"🍳","min":180,"max":350,"t":50,"d":false,"fried":true,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"貝果","e":"🥯","min":70,"max":160,"t":15,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"可頌三明治","e":"🥐","min":100,"max":200,"t":20,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞肉捲","e":"🌯","min":100,"max":220,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤蔬菜捲","e":"🌯","min":100,"max":220,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸雞便當","e":"🍗","min":100,"max":190,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸排骨便當","e":"🍱","min":100,"max":190,"t":25,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸蝦飯","e":"🍤","min":150,"max":280,"t":35,"d":false,"fried":true,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"炸魚薯條","e":"🐟","min":180,"max":320,"t":40,"d":false,"fried":true,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞排","e":"🍗","min":80,"max":120,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"地瓜球＋鹹食","e":"🍠","min":60,"max":150,"t":15,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"章魚燒","e":"🐙","min":70,"max":150,"t":20,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"大阪燒","e":"🥞","min":120,"max":250,"t":35,"d":false,"fried":true,"premium":true,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"串燒","e":"🍢","min":150,"max":350,"t":45,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"居酒屋料理","e":"🍶","min":300,"max":700,"t":80,"d":false,"fried":true,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤肉串","e":"🍢","min":100,"max":260,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤玉米＋小吃","e":"🌽","min":60,"max":160,"t":20,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蒸餃","e":"🥟","min":80,"max":180,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"湯包","e":"🥟","min":100,"max":220,"t":30,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"酸辣湯＋餃子","e":"🥟","min":100,"max":200,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"牛肉湯＋白飯","e":"🥣","min":100,"max":220,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"虱目魚粥","e":"🥣","min":100,"max":220,"t":30,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"虱目魚肚飯","e":"🐟","min":130,"max":260,"t":35,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鮮魚湯","e":"🐟","min":120,"max":260,"t":35,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","hot","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海鮮粥","e":"🥣","min":150,"max":300,"t":40,"d":true,"fried":false,"premium":true,"takeout":true,"tags":["light","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海鮮烏龍麵","e":"🍜","min":150,"max":300,"t":40,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海鮮義大利麵","e":"🍝","min":220,"max":400,"t":50,"d":false,"fried":false,"premium":true,"takeout":true,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"海鮮丼","e":"🍣","min":250,"max":500,"t":50,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"握壽司套餐","e":"🍣","min":300,"max":700,"t":70,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["light"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"迴轉壽司","e":"🍣","min":200,"max":500,"t":60,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"無菜單日料","e":"🍣","min":800,"max":2000,"t":120,"d":true,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"義式餐廳套餐","e":"🍝","min":500,"max":1200,"t":90,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"法式餐廳套餐","e":"🍽️","min":800,"max":2500,"t":120,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"西班牙海鮮飯","e":"🥘","min":350,"max":700,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"西班牙Tapas","e":"🍽️","min":350,"max":800,"t":80,"d":false,"fried":true,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"美式烤肋排","e":"🍖","min":400,"max":900,"t":75,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"美式漢堡餐廳","e":"🍔","min":250,"max":500,"t":55,"d":false,"fried":true,"premium":true,"takeout":false,"tags":["premium","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"日式燒肉","e":"🥩","min":500,"max":1200,"t":90,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"韓式燒肉","e":"🥩","min":400,"max":900,"t":90,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"泰式餐廳合菜","e":"🍲","min":300,"max":700,"t":70,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"中式熱炒","e":"🥘","min":200,"max":500,"t":60,"d":false,"fried":true,"premium":false,"takeout":false,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"台菜餐廳","e":"🍽️","min":350,"max":800,"t":75,"d":false,"fried":false,"premium":true,"takeout":false,"tags":["premium"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"客家小炒套餐","e":"🥘","min":180,"max":350,"t":45,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"三杯雞飯","e":"🍗","min":120,"max":230,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"宮保雞丁飯","e":"🍗","min":120,"max":230,"t":30,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"糖醋排骨飯","e":"🍖","min":120,"max":240,"t":30,"d":false,"fried":true,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"番茄牛肉燴飯","e":"🍚","min":130,"max":250,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"滑蛋牛肉飯","e":"🍚","min":130,"max":250,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"燴飯","e":"🍚","min":90,"max":190,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full","hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞肉咖哩烏龍","e":"🍜","min":130,"max":240,"t":35,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"麻婆豆腐飯","e":"🍚","min":100,"max":200,"t":30,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["hot","full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"番茄炒蛋飯","e":"🍚","min":80,"max":170,"t":25,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["full"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"蒸蛋＋小菜＋飯","e":"🍚","min":80,"max":180,"t":25,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"豆漿＋飯糰","e":"🥛","min":50,"max":120,"t":15,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"饅頭夾蛋","e":"🥚","min":40,"max":90,"t":15,"d":false,"fried":false,"premium":false,"takeout":true,"tags":["notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"雞蛋沙拉三明治","e":"🥪","min":60,"max":140,"t":15,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"鮪魚三明治","e":"🥪","min":70,"max":160,"t":15,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"},{"name":"烤雞三明治","e":"🥪","min":90,"max":180,"t":20,"d":true,"fried":false,"premium":false,"takeout":true,"tags":["light","notfull"],"desc":"依照你的條件篩選出的晚餐選項"}];
+let favorites = JSON.parse(localStorage.getItem("dinnerFavorites") || "[]");
+function isFavorite(name){ return favorites.includes(name); }
+function toggleFavorite(name){
+  if(isFavorite(name)) favorites=favorites.filter(x=>x!==name);
+  else favorites.push(name);
+  localStorage.setItem("dinnerFavorites",JSON.stringify(favorites));
+  render();
+}
+let list=[],liked=[],i=0;
+function start(){
+  const t=+time.value;
+  const budgetRanges={
+    under100:[0,100],
+    "100to150":[100,150],
+    "150to200":[150,200],
+    "200to300":[200,300],
+    "300to500":[300,500],
+    over500:[500,Infinity],
+    unlimited:[0,Infinity]
+  };
+  const [budgetMin,budgetMax]=budgetRanges[budget.value];
+  const di=diet.value;
+  const needs=[...document.querySelectorAll("#need input:checked")].map(x=>x.value);
+
+  function matchesNeed(f,n){
+    if(n==="nofried") return !f.fried;
+    if(n==="notfull") return f.tags.includes("notfull");
+    if(n==="premium") return f.premium;
+    if(n==="takeout") return f.takeout;
+    return f.tags.includes(n);
+  }
+
+  // Main conditions: time, budget, diet control.
+  let candidates=foods.filter(f=>f.t<=t && f.max>=budgetMin && f.min<=budgetMax && (di==="no" || f.d));
+
+  // Rank candidates by how many selected preferences they satisfy.
+  candidates=candidates.map(f=>{
+    const matched=needs.filter(n=>matchesNeed(f,n)).length;
+    return {f,matched,fav:isFavorite(f.name)?1:0,jitter:Math.random()};
+  }).sort((a,b)=>b.fav-a.fav || b.matched-a.matched || a.jitter-b.jitter);
+
+  // If main conditions somehow give zero, choose nearest options instead of failing.
+  let relaxed=false;
+  if(!candidates.length){
+    relaxed=true;
+    candidates=foods.map(f=>{
+      const pricePenalty =
+        f.max < budgetMin ? (budgetMin-f.max)/40 :
+        f.min > budgetMax ? (f.min-budgetMax)/40 : 0;
+      const penalty=pricePenalty + Math.max(0,f.t-t)/10 + (di==="yes"&&!f.d?6:0);
+      const matched=needs.filter(n=>matchesNeed(f,n)).length;
+      return {f,matched,fav:isFavorite(f.name)?1:0,penalty,jitter:Math.random()};
+    }).sort((a,b)=>a.penalty-b.penalty || b.fav-a.fav || b.matched-a.matched || a.jitter-b.jitter);
+  }
+
+  list=candidates.slice(0,20).map(x=>x.f);
+  liked=[]; i=0;
+
+  setup.classList.add("hidden");
+  result.classList.add("hidden");
+  match.classList.remove("hidden");
+  document.getElementById("relaxNote")?.remove();
+
+  // Existing page uses render() for cards.
+  render();
+
+  const note=document.createElement("div");
+  note.id="relaxNote";
+  note.style.cssText="margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#fff6e9;border:1px solid #d8b999;color:#5a4638;font-size:14px";
+  note.textContent=relaxed
+    ? "💡 沒有完全符合主要條件的選項，已從資料庫找出最接近的 20 個給你挑。"
+    : "✨ 已從 "+foods.length+" 種晚餐中，挑出最符合你條件的 "+list.length+" 個選項。";
+  match.insertBefore(note,match.firstChild);
+}
+function render(){let f=list[i];card.innerHTML=`<button class="favorite-btn ${isFavorite(f.name)?"active":""}" 
+      onclick="toggleFavorite('${f.name.replace(/'/g,"\\'")}')" 
+      title="喜歡這個食物">${isFavorite(f.name)?"♥":"♡"}</button><div class="emoji">${f.e}</div><h2>${f.name}</h2><div class="details">💰 約 ${f.min}～${f.max} 元<br>⏱ 約 ${f.t} 分鐘<br>✨ ${f.desc}</div>`;count.textContent=`${i+1} / ${list.length}`}
+function pick(y){if(y)liked.push(list[i]);i++;if(i<list.length)render();else finish()}
+function finish(){
+  match.classList.add("hidden");
+
+  if(!liked.length){
+    return show("😭 今天真的好難選！","你把所有選項都跳過了。");
+  }
+
+  // 第一輪留下超過 10 個：自動再進入一輪卡片淘汰。
+  if(liked.length>10){
+    list=[...liked];
+    liked=[];
+    i=0;
+    result.classList.add("hidden");
+    match.classList.remove("hidden");
+    document.getElementById("relaxNote")?.remove();
+
+    const note=document.createElement("div");
+    note.id="relaxNote";
+    note.style.cssText="margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#fff6e9;border:1px solid #d8b999;color:#5a4638;font-size:14px";
+    note.textContent="❤️ 你留下了 "+list.length+" 個選項，再選一輪，把今晚想吃的範圍縮小一點！";
+    match.insertBefore(note,match.firstChild);
+    render();
+    return;
+  }
+
+  result.classList.remove("hidden");
+  result.innerHTML=`
+    <h2 style="text-align:center">❤️ 你最後留下的選項</h2>
+    <p>現在可以自己做最後決定，或交給系統依照你一開始的條件幫你選。</p>
+    <div id="finalChoices"></div>
+    <button class="primary" style="margin-top:14px" onclick="helpChoose()">我不知道，你幫我選</button>`;
+
+  const area=document.getElementById("finalChoices");
+  liked.forEach((f,idx)=>{
+    area.innerHTML += `
+      <button onclick="finalPick(${idx})"
+        style="margin-top:10px;background:#d9edf9;color:#5a4638;border:2px solid #9abfd4">
+        ${f.e} ${f.name}｜${f.min}～${f.max} 元｜約 ${f.t} 分鐘
+      </button>`;
+  });
+}
+
+function finalPick(idx){
+  showWinner(liked[idx], "這是你自己做的最終決定！");
+}
+
+function helpChoose(){
+  // 不用純抽籤：依照原始條件為候選項目評分。
+  const selectedTime=+time.value;
+  const budgetRanges2={
+    under100:[0,100],"100to150":[100,150],"150to200":[150,200],
+    "200to300":[200,300],"300to500":[300,500],over500:[500,Infinity],unlimited:[0,Infinity]
+  };
+  const [selectedBudgetMin,selectedBudgetMax]=budgetRanges2[budget.value];
+  const selectedNeeds=[...document.querySelectorAll("#need input:checked")].map(x=>x.value);
+  const selectedDiet=diet.value;
+
+  let scored=liked.map(f=>{
+    let score=0;
+    // 越符合預算與時間，分數越高。
+    if(f.max>=selectedBudgetMin && f.min<=selectedBudgetMax) score += 3;
+    if(f.t <= selectedTime) score += 2;
+    if(selectedDiet==="yes" && f.d) score += 3;
+    selectedNeeds.forEach(n=>{
+      if(n==="nofried" && !f.fried) score += 3;
+      else if(n==="notfull" && f.tags.includes("notfull")) score += 3;
+      else if(n==="premium" && f.premium) score += 3;
+      else if(n==="takeout" && f.takeout) score += 3;
+      else if(f.tags.includes(n)) score += 3;
+    });
+
+    // 在同分時，以較省時間、較低價格作為小幅加分，避免最後完全隨機。
+    score += Math.max(0, 1 - f.t/100);
+    score += Math.max(0, 1 - f.min/500);
+    return {f,score};
+  });
+
+  scored.sort((a,b)=>b.score-a.score);
+  showWinner(scored[0].f, "依照你一開始設定的時間、預算、飲控與需求，這個選項最符合條件。");
+}
+
+function showWinner(w,reason){
+  result.classList.remove("hidden");
+  result.innerHTML=`
+    <h2 style="text-align:center">🎉 今晚就吃這個！</h2>
+    <div style="text-align:center;font-size:64px">${w.e}</div>
+    <h2 style="text-align:center">${w.name}</h2>
+    <p>💰 約 ${w.min}～${w.max} 元<br>⏱ 約 ${w.t} 分鐘</p>
+    <p>${reason}</p>
+    <button class="primary" onclick="reset()">重新開始</button>`;
+}
+
+function show(title,msg){result.classList.remove("hidden");result.innerHTML=`<h2 style="text-align:center">${title}</h2><p>${msg}</p><button class="primary" onclick="reset()">重新設定／再選一次</button>`}
+function reset(){
+  document.querySelectorAll("#need input").forEach(x=>x.checked=false);result.classList.add("hidden");match.classList.add("hidden");setup.classList.remove("hidden")}
+</script></body></html>
